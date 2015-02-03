@@ -1,6 +1,6 @@
-Leo-III
+LeoPARD
 =======
-*A massively parallel higher-order theorem prover*
+*Leo-III's Parallel ARchitecture and Datastructures*
 
 In the Leo-III project, we
 design and implement a state-of-the-art Higher-Order
@@ -25,6 +25,9 @@ use term sharing [[6](http://dl.acm.org/citation.cfm?id=1218621), [7](http://dl.
 [[4](dx.doi.org/10.1007/3-540-45744-5_19), [9](dx.doi.org/10.1007/978-3-540-71070-7_14)]. Leo-III will also offer special support for
 reasoning in various quantified non-classical logics by exploiting
 a semantic embedding [[1](dx.doi.org/10.5220/0004324803460351)] approach.
+
+This project contains the data structure framework LeoPARD underlying the Leo-III prover.
+As a test, a small executable can be created than runs a basic propositional reasoning process.
 
 Further information can be found at the [Leo-III Website](http://page.mi.fu-berlin.de/lex/leo3/).
 
