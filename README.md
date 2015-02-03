@@ -2,6 +2,8 @@ LeoPARD
 =======
 *Leo-III's Parallel ARchitecture and Datastructures*
 
+This project contains the data structure framework LeoPARD underlying the Leo-III prover.
+
 In the Leo-III project, we
 design and implement a state-of-the-art Higher-Order
 Logic Theorem Prover, the successor of the well known
@@ -26,7 +28,6 @@ use term sharing [[6](http://dl.acm.org/citation.cfm?id=1218621), [7](http://dl.
 reasoning in various quantified non-classical logics by exploiting
 a semantic embedding [[1](dx.doi.org/10.5220/0004324803460351)] approach.
 
-This project contains the data structure framework LeoPARD underlying the Leo-III prover.
 As a test, a small executable can be created than runs a basic propositional reasoning process.
 
 Further information can be found at the [Leo-III Website](http://page.mi.fu-berlin.de/lex/leo3/).
