@@ -31,6 +31,13 @@ As a test, a small executable can be created than runs a basic propositional rea
 
 Further information can be found at the [Leo-III Website](http://page.mi.fu-berlin.de/lex/leo3/).
 
+Related Documents
+----------------
+
+- [Max Wisniewski, **Agent-based Blackboard Architecture for a Higher-Order Theorem Prover**. *Master Thesis, Freie Universität Berlin*](http://userpage.fu-berlin.de/~lex/drop/wisniewski_architecture.pdf)
+- [Alexander Steen, **Efficient Data Structures for Automated Theorem Proving in Expressive Higher-Order Logics**. *Master Thesis, Freie Universität Berlin*](http://userpage.fu-berlin.de/~lex/drop/steen_datastructures.pdf)
+- [Max Wisniewski, Alexander Steen, Christoph Benzmüller, **The Leo-III Project**. *Joint Automated Reasoning Workshop and Deduktionstreffen, 2014*](http://page.mi.fu-berlin.de/cbenzmueller/papers/W53.pdf)
+ 
 
 Required Dependencies
 ----------------
