@@ -7,7 +7,7 @@ import leo.datastructures.{TermIndex, Role_Definition, Role_Unknown, Role_Type}
 import leo.datastructures.blackboard.{FormulaStore, Blackboard}
 import leo.datastructures.context.Context
 import leo.datastructures.impl.Signature
-import leo.modules.output.{Output, SZS_SyntaxError, SZS_InputError, StatusSZS}
+import leo.modules.output._
 
 import scala.collection.immutable.HashSet
 
@@ -137,42 +137,41 @@ object Utility {
     }
   }
 
+  def printSignature(): Unit = {
+    val s = Signature.get
+    println("Name | Id | (Type) | (Def)")
+    (s.allConstants).foreach { case c => {
+      val c1 = s(c)
+      print(c1.name + " | ")
+      print(c1.key + " |")
+      c1.ty foreach { case ty => print(ty.pretty + " | ")}
+      c1.defn foreach { case defn => print(defn.pretty)}
+      println()
+    }
+    }
+  }
+
+  def printUserDefinedSignature(): Unit = {
+    val s = Signature.get
+    (s.allUserConstants).foreach { case c => {
+      val c1 = s(c)
+      print(c1.name + " | ")
+      print(c1.key + " | ")
+      c1.ty foreach { case ty => print(ty.pretty + " | ")}
+      c1.defn foreach { case defn => print(defn.pretty)}
+      println()
+    }
+    }
+  }
+
   /**
    * Shows all formulas in the current context.
    */
   def context(): Unit = {
-    val maxSize = 85
-    val maxNameSize = 25
-    val maxRoleSize = 19
-    val maxFormulaSize = maxSize -(maxNameSize + maxRoleSize + 6)
-
     println("Signature:")
-    val s = Signature.get
-    for(c <- s.allConstants) {
-      val c1 = s(c)
-      print(c1.name+" | ")
-      print(c1.key+" | ")
-      c1.ty foreach {case ty => print(ty.pretty + " | ")}
-      c1.defn foreach {case defn => print(defn.pretty)}
-      println()
-    }
-
-    println("Name" + " "*(maxNameSize-4) +  " | " + "Role" + " " * (maxRoleSize -4)+" | Formula")
-    println("-"*maxSize)
-    Blackboard().getFormulas.foreach {
-      x =>
-        val name = x.name.toString.take(maxNameSize)
-        val role = x.role.pretty.take(maxRoleSize)
-        val form = x.clause.pretty
-        val form1 = form.take(maxFormulaSize)
-        val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
-
-        val nameOffset = maxNameSize - name.length
-        val roleOffset = maxRoleSize - role.length
-        println(name + " " * nameOffset + " | " + role + " " * roleOffset + " | " +  form1)
-        form2.foreach(x => println(" " * maxNameSize + " | " + " " * maxRoleSize + " | "  + x))
-    }
-    println()
+    printSignature()
+    println("Blackboard context:")
+    formulaContext()
   }
 
   def formulaContext() : Unit = {
@@ -232,7 +231,7 @@ object Utility {
   def printDerivation(f : FormulaStore) : Unit = Out.output(derivationString(new HashSet[Int](), 0, f, new StringBuilder()).toString())
 
   private def derivationString(origin: Set[Int], indent : Int, f: FormulaStore, sb : StringBuilder) : StringBuilder = {
-    f.origin.foldRight(sb.append(downList(origin, indent)).append(f.pretty).append(" "*10+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
+    f.origin.foldRight(sb.append(downList(origin, indent)).append(ToTPTP(f).output).append("\t"*6+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
   }
 
   private def downList(origin: Set[Int], indent : Int) : String = {

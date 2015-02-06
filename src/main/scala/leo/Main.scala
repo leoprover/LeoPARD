@@ -54,13 +54,15 @@ object Main {
     // Create Scheduler
     Scheduler(Configuration.THREADCOUNT)
 
-    val it = getSplitFirst.iterator
+    val it = getStdPhases.iterator
     var r = true
     while(it.hasNext && r) {
       val phase = it.next()
-      Out.info(s"[Phase]:\n  Starting ${phase.name}")
+      Out.info(s"\n [Phase]:\n  Starting ${phase.name}\n${phase.description}")
+      val start = System.currentTimeMillis()
       r = phase.execute()
-      Out.info(s"[Phase]:\n  Ended ${phase.name}")
+      val end = System.currentTimeMillis()
+      Out.info(s"\n [Phase]:\n  Ended ${phase.name}\n  Time: ${end-start}ms")
     }
     deferredKill.kill()
 
