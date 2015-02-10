@@ -21,4 +21,5 @@ then
    make
 fi
 
-java -jar target/leo-iii-jar-with-dependencies.jar "$@"
+version=$(sed -n "/version/{s/.*<version>\(.*\)<\/version>.*/\1/;p}" pom.xml | head -n 1)
+java -jar target/leopard-$version.jar "$@"
