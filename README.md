@@ -38,6 +38,7 @@ Related Documents
 - [Max Wisniewski, **Agent-based Blackboard Architecture for a Higher-Order Theorem Prover**. *Master Thesis, Freie Universität Berlin*](http://userpage.fu-berlin.de/~lex/drop/wisniewski_architecture.pdf)
 - [Alexander Steen, **Efficient Data Structures for Automated Theorem Proving in Expressive Higher-Order Logics**. *Master Thesis, Freie Universität Berlin*](http://userpage.fu-berlin.de/~lex/drop/steen_datastructures.pdf)
 - [Max Wisniewski, Alexander Steen, Christoph Benzmüller, **The Leo-III Project**. *Joint Automated Reasoning Workshop and Deduktionstreffen, 2014*](http://page.mi.fu-berlin.de/cbenzmueller/papers/W53.pdf)
+- Yves Müller, **Subprover Parallelism in the Automated Theorem Prover LEO-II**. *Master Thesis, Freie Universität Berlin*, 2013
  
 
 Required Dependencies
