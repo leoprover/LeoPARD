@@ -70,6 +70,8 @@ All test suits are ran by
     
 The compiled test class files will be placed at `./target/test-classes/`.
 
+**For the tests it is important that the project is places in a path where each directory does not contain any blank spaces. Otherwise the tests are not executed.**
+
 The sole compilation process can be started by typing
 
     > mvn compile
