@@ -98,6 +98,9 @@
           </execution>
         </executions>
         <configuration>
+          <args>
+            <arg>-nowarn</arg>
+          </args>
           <scalaVersion>${scala.version}</scalaVersion>
         </configuration>
       </plugin>
