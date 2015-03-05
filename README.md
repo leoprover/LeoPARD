@@ -32,12 +32,26 @@ As a test, a small executable can be created than runs a basic propositional rea
 
 Further information can be found at the [Leo-III Website](http://page.mi.fu-berlin.de/lex/leo3/).
 
+Features
+----------------
+
+- Basic standard data structures for logical reasoning included (such as Terms, Clauses, Literals, Signatures, ...)
+- Efficient higher-order term representation based on the polymorphically typed Lambda-Calculus (employing Spine notation, explicit substitutions and perfect term sharing) 
+- Parser for every TPTP syntax dialect (including CNF, FOF, TFF, TFA, TH0), preliminary support for TFF1-draft dialect
+- Translation module for transforming each parsed formula to an equivalent Lambda-Term
+- Backward translation of internal terms and formulae to TPTP THF compatible representation
+- Signature with all TPTP-compatible (fixed/defined) constants available
+- Generic multi-agent design for massive parallel reasoning
+- Generic templates for the employment of external reasoners included (works best with SZS status compatible reasoners)
+- Blackboard architecture for agent communication and knowledge sharing
+
 Related Documents
 ----------------
 
 - [Max Wisniewski, **Agent-based Blackboard Architecture for a Higher-Order Theorem Prover**. *Master Thesis, Freie Universität Berlin*](http://userpage.fu-berlin.de/~lex/drop/wisniewski_architecture.pdf)
 - [Alexander Steen, **Efficient Data Structures for Automated Theorem Proving in Expressive Higher-Order Logics**. *Master Thesis, Freie Universität Berlin*](http://userpage.fu-berlin.de/~lex/drop/steen_datastructures.pdf)
 - [Max Wisniewski, Alexander Steen, Christoph Benzmüller, **The Leo-III Project**. *Joint Automated Reasoning Workshop and Deduktionstreffen, 2014*](http://page.mi.fu-berlin.de/cbenzmueller/papers/W53.pdf)
+- Yves Müller, **Subprover Parallelism in the Automated Theorem Prover LEO-II**. *Master Thesis, Freie Universität Berlin*, 2013
  
 
 Required Dependencies
@@ -68,6 +82,8 @@ All test suits are ran by
     > mvn test
     
 The compiled test class files will be placed at `./target/test-classes/`.
+
+**For the tests it is important that the project is placed in a path where each directory does not contain any blank spaces. Otherwise the tests are not executed.**
 
 The sole compilation process can be started by typing
 
