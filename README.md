@@ -32,6 +32,19 @@ As a test, a small executable can be created than runs a basic propositional rea
 
 Further information can be found at the [Leo-III Website](http://page.mi.fu-berlin.de/lex/leo3/).
 
+Features
+----------------
+
+- Basic standard data structures for logical reasoning included (such as Terms, Clauses, Literals, Signatures, ...)
+- Efficient higher-order term representation based on the polymorphically typed Lambda-Calculus (employing Spine notation, explicit substitutions and perfect term sharing) 
+- Parser for every TPTP syntax dialect (including CNF, FOF, TFF, TFA, TH0), preliminary support for TFF1-draft dialect
+- Translation module for transforming each parsed formula to an equivalent Lambda-Term
+- Backward translation of internal terms and formulae to TPTP THF compatible representation
+- Signature with all TPTP-compatible (fixed/defined) constants available
+- Generic multi-agent design for massive parallel reasoning
+- Generic templates for the employment of external reasoners included (works best with SZS status compatible reasoners)
+- Blackboard architecture for agent communication and knowledge sharing
+
 Related Documents
 ----------------
 
@@ -70,7 +83,7 @@ All test suits are ran by
     
 The compiled test class files will be placed at `./target/test-classes/`.
 
-**For the tests it is important that the project is places in a path where each directory does not contain any blank spaces. Otherwise the tests are not executed.**
+**For the tests it is important that the project is placed in a path where each directory does not contain any blank spaces. Otherwise the tests are not executed.**
 
 The sole compilation process can be started by typing
 
