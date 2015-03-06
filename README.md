@@ -4,33 +4,43 @@ LeoPARD
 
 This project contains the data structure framework LeoPARD underlying the Leo-III prover.
 
-In the Leo-III project, we
-design and implement a state-of-the-art Higher-Order
-Logic Theorem Prover, the successor of the well known
-LEO-II prover [[2](http://dx.doi.org/10.1007/978-3-540-71070-7_14)]. Leo-III will be based on ordered
-paramodulation/superposition.
-In constrast to LEO-II, we replace the internal term representation
-(the commonly used simply typed lambda-calculus)
-by a more expressive system supporting type polymorphism.
-In order to achieve a substantial performance speed-up,
-the architecture of Leo-III will be based on massive parallelism
-(e.g. And/Or-Parallelism, Multisearch) [[3](http://dx.doi.org/10.1023/A:1018932114059)]. The
-current design is a multi-agent blackboard architecture
-that will allow to independently run agents with our proof
-calculus as well as agents for external (specialized) provers.
-Leo-III will focus right from the start on compatibility to
-the widely used TPTP infrastructure [[8](http://dx.doi.org/10.1007/s10817-009-9143-8)]. Moreover, it
-will offer built-in support for specialized external prover
-agents and provide external interfaces to interactive provers
-such as Isabelle/HOL [[5](http://dx.doi.org/10.1007/3-540-45949-9)]. The implementation will excessively
-use term sharing [[6](http://dl.acm.org/citation.cfm?id=1218621), [7](http://dl.acm.org/citation.cfm?id=1218620)] and several indexing techniques
-[[4](dx.doi.org/10.1007/3-540-45744-5_19), [9](dx.doi.org/10.1007/978-3-540-71070-7_14)]. Leo-III will also offer special support for
-reasoning in various quantified non-classical logics by exploiting
-a semantic embedding [[1](dx.doi.org/10.5220/0004324803460351)] approach.
+In the Leo-III project, we design and implement a state-of-the-art
+Higher-Order Logic Theorem Prover, the successor of the well known
+LEO-II prover
+[[1](http://dx.doi.org/10.1007/978-3-540-71070-7_14)]. Leo-III will be
+based on ordered paramodulation/superposition. The prover also
+integrates and extends ideas from LEO-I
+[[2](http://dx.doi.org/10.1007/BFb0054256)] and the OANTS
+[[3](http://dx.doi.org/10.1007/BFb0057438)] blackboard mechanism.  In
+contrast to LEO-II and LEO-I, we replace the internal term
+representation (the commonly used simply typed lambda-calculus) by a
+more expressive system supporting type polymorphism.  In order to
+achieve a substantial performance speed-up, the architecture of
+Leo-III will be based on massive parallelism (e.g. And/Or-Parallelism,
+Multisearch) [[4](http://dx.doi.org/10.1023/A:1018932114059)]. The
+current design is a multi-agent blackboard architecture that will
+allow to independently run agents with our proof calculus as well as
+agents for external (specialized) provers.  Leo-III will focus right
+from the start on compatibility to the widely used TPTP infrastructure
+[[5](http://dx.doi.org/10.1007/s10817-009-9143-8)]. Moreover, it will
+offer built-in support for specialized external prover agents and
+provide external interfaces to interactive provers such as
+Isabelle/HOL [[6](http://dx.doi.org/10.1007/3-540-45949-9)]. The
+implementation will excessively use term sharing
+[[7](http://dl.acm.org/citation.cfm?id=1218621),
+[8](http://dl.acm.org/citation.cfm?id=1218620)] and several indexing
+techniques [[9](dx.doi.org/10.1007/3-540-45744-5_19),
+[10](dx.doi.org/10.1007/978-3-540-71070-7_14)]. Leo-III will also
+offer special support for reasoning in various quantified
+non-classical logics by exploiting a semantic embedding
+[[11](dx.doi.org/10.5220/0004324803460351)] approach.
 
-As a test, a small executable can be created than runs a basic propositional reasoning process.
+As a test and for illustration purposes, a small executable can be created than runs a basic
+propositional reasoning process. After the public release of Leo-III further features of this
+prover will be made available in LeoPARD.
 
-Further information can be found at the [Leo-III Website](http://page.mi.fu-berlin.de/lex/leo3/).
+Further information can be found at the [Leo-III
+Website](http://page.mi.fu-berlin.de/lex/leo3/).
 
 Features
 ----------------
