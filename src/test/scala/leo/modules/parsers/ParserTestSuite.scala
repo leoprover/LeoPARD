@@ -30,7 +30,6 @@ class ParserTestSuite extends LeoTestSuite {
 
   for (p <- problems) {
     test(p._2) {
-      val sig = getFreshSignature
       printHeading(s"Parsing test for ${p._2}")
       Out.output(s"## Parsing ${p._1} ...")
 
