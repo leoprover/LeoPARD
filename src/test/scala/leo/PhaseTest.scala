@@ -35,8 +35,8 @@ class PhaseTest extends FunSuite {
     "ex3" -> ("Prop-Problem 3", tphases),
     "SET014^4" -> ("HO-Problem 1", hophases),
     "SET014^5" -> ("HO-Problem 2", hophases),
-    "SET027^5" -> ("HO-Problem 3", hophases),
-    "SET067^1" -> ("HO-Problem 4", hophases),
+    //"SET027^5" -> ("HO-Problem 3", hophases),
+    "SET067^1" -> ("HO-Problem 3", hophases),
     "SYN973+1" -> ("FOF-Problem 1", hophases),
     "SYN974+1" -> ("FOF-Probelm 2", hophases),
     "SYN978+1" -> ("FOF-Problem 3", hophases)
