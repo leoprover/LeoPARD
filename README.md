@@ -56,6 +56,14 @@ Features
 - Generic templates for the employment of external reasoners included (works best with SZS status compatible reasoners)
 - Blackboard architecture for agent communication and knowledge sharing
 
+External prover support
+----------------
+
+An experimental external prover support is included in this version.
+The command-line parameter "--with-prover" can be set to "leo2", "satallax" or "remote-leo2".
+In the first two cases the provers need to be installed locally and their paths (the path to the executable) need to be accessible via the environment variables $LEO2_PATH and $SATALLAX_PATH (respectively).
+For the remote-leo2 call, internet connection needs to be active.
+
 Related Documents
 ----------------
 
