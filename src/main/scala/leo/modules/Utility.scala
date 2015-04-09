@@ -1,7 +1,7 @@
 package leo
 package modules
 
-import java.io.{FileNotFoundException, File}
+import java.io.{PrintWriter, StringWriter, FileNotFoundException, File}
 
 import leo.datastructures.{TermIndex, Role_Definition, Role_Unknown, Role_Type}
 import leo.datastructures.blackboard.{FormulaStore, Blackboard}
@@ -97,14 +97,14 @@ object Utility {
 
 
               } catch {
-                case ex: FileNotFoundException => Out.severe("Problem file not found."); throw new SZSException(SZS_InputError)
-                case _: Throwable => throw new SZSException(SZS_InputError)
+                case ex: FileNotFoundException => Out.severe("Problem file not found."); throw new SZSException(SZS_InputError, s"File $file not found", s"with rel ${rel.mkString("/")}", ex)
+                case e: Throwable => throw new SZSException(SZS_InputError, e.getMessage, "", e)
               }
             }
           } else {
-            Out.severe("Problem file not found."); throw new SZSException(SZS_InputError)
+            Out.severe("Problem file not found."); throw new SZSException(SZS_InputError, s"File $file not found", s"with rel ${rel.mkString("/")}", ex)
           }
-        case _ : Throwable => throw new SZSException(SZS_InputError)
+        case e: Throwable => throw new SZSException(SZS_InputError, e.getMessage, "", e)
       }
     }
   }
@@ -263,7 +263,15 @@ object Utility {
   def printDerivation(f : FormulaStore) : Unit = Out.output(derivationString(new HashSet[Int](), 0, f, new StringBuilder()).toString())
 
   private def derivationString(origin: Set[Int], indent : Int, f: FormulaStore, sb : StringBuilder) : StringBuilder = {
-    f.origin.foldRight(sb.append(downList(origin, indent)).append(ToTPTP(f).output).append("\t"*6+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
+    f.origin.foldRight(sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\t"*6+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
+  }
+
+  private def mkTPTP(f : FormulaStore) : String = {
+    try{
+      ToTPTP(f).output
+    } catch {
+      case e : Throwable => f.pretty
+    }
   }
 
   private def downList(origin: Set[Int], indent : Int) : String = {
@@ -276,10 +284,23 @@ object Utility {
     }}.foldRight(""){(a,b) => a+b}
   }
 
+
+  def stackTraceAsString(e: Throwable): String = {
+    val sw = new StringWriter()
+    e.printStackTrace(new PrintWriter(sw))
+    sw.toString
+  }
+
 }
 
-class SZSException(val status : StatusSZS) extends RuntimeException("SZS status "+status.output)
+class SZSException(val status : StatusSZS, message : String = "", val debugMessage: String = "", cause : Throwable = null) extends RuntimeException(message, cause)
 
-case class SZSOutput(status : StatusSZS) extends Output {
-  override def output: String = "% SZS status "+status.output
+case class SZSOutput(status : StatusSZS, problem: String = "") extends Output {
+  override def output: String = problem match {
+    case "" => s"% SZS status ${status.output}"
+    case prob => s"% SZS status ${status.output} for $problem"
+  }
 }
+
+
+

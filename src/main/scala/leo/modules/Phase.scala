@@ -9,7 +9,7 @@ import leo.datastructures.blackboard._
 import leo.datastructures.context.{BetaSplit, Context}
 import leo.datastructures.impl.Signature
 import leo.modules.normalization.{NegationNormal, Skolemization, Simplification, DefExpansion}
-import leo.modules.output.{SZS_CounterSatisfiable, StatusSZS, SZS_Theorem, SZS_Error}
+import leo.modules.output._
 import leo.modules.proofCalculi.enumeration.SimpleEnum
 import leo.modules.proofCalculi.splitting.ClauseHornSplit
 import leo.modules.proofCalculi.{PropParamodulation, IdComparison, Paramodulation}
@@ -18,7 +18,7 @@ import leo.datastructures.term.Term
 
 
 object Phase {
-  def getStdPhases : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, ParamodPhase)
+  def getStdPhases : Seq[Phase] = List(new LoadPhase(true), SimplificationPhase, ParamodPhase)
   def getHOStdPhase : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, SimpleEnumerationPhase, ParamodPhase)
   def getSplitFirst : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, ExhaustiveClausificationPhase, SplitPhase, ParamodPhase)
   def getCounterSat : Seq[Phase] =  List(new LoadPhase(false), FiniteHerbrandEnumeratePhase, PreprocessPhase, ParamodPhase)
@@ -147,7 +147,7 @@ trait CompletePhase extends Phase {
 }
 
 
-class LoadPhase(negateConjecture : Boolean) extends Phase{
+class LoadPhase(negateConjecture : Boolean, problemfile: String = Configuration.PROBLEMFILE) extends Phase{
   override val name = "LoadPhase"
 
   override val agents : Seq[Agent] = if(negateConjecture) List(new ConjectureAgent) else Nil
@@ -155,7 +155,7 @@ class LoadPhase(negateConjecture : Boolean) extends Phase{
   var finish : Boolean = false
 
   override def execute(): Boolean = {
-    val file = Configuration.PROBLEMFILE
+    val file = problemfile
     val wait = new Wait(this)
 
     if(negateConjecture) {
@@ -380,20 +380,34 @@ object FiniteHerbrandEnumeratePhase extends Phase {
 object ExternalProverPhase extends CompletePhase {
   override def name: String = "ExternalProverPhase"
 
-  val prover = if (Configuration.isSet("with-prover")) {
+  def prover = if (Configuration.isSet("with-prover")) {
     Configuration.valueOf("with-prover") match {
-      case None => throw new IllegalArgumentException("adsasda")
+      case None => throw new SZSException(SZS_UsageError, "--with-prover parameter used without <prover> argument.")
       case Some(str) => str.head match {
-        case "leo2" => "scripts/leoexec.sh"
-        case "satallax" => "scripts/satallaxexec.sh"
+        case "leo2" => {
+          val path = System.getenv("LEO2_PATH")
+          if (path != null) {
+            "scripts/leoexec.sh"
+          } else {
+            throw new SZSException(SZS_UsageError, "--with-prover used with LEO2 prover, but $LEO2_PATH is not set.")
+          }
+        }
+        case "satallax" => {
+          val path = System.getenv("SATALLAX_PATH")
+          if (path != null) {
+            "scripts/satallaxexec.sh"
+          } else {
+            throw new SZSException(SZS_UsageError, "--with-prover used with satallax prover, but $SATALLAX_PATH is not set.")
+          }
+        }
         case "remote-leo2" => "scripts/remote-leoexec.sh"
-        case _ => throw new IllegalArgumentException("asdasd")
+        case _ => throw new SZSException(SZS_UsageError, "--with-prover parameter used with unrecognized <prover> argument.")
       }
     }
   } else {
-    throw new IllegalArgumentException("no external prover given")
+    throw new SZSException(SZS_Error, "This is considered an system error, please report this problem.", "CL parameter with-prover lost")
   }
-  val extProver : Agent = SZSScriptAgent(prover)(x => x)
+  def extProver : Agent = SZSScriptAgent(prover)(x => x)
 
   override protected def agents: Seq[Agent] = List(extProver)
 
@@ -401,18 +415,20 @@ object ExternalProverPhase extends CompletePhase {
     init()
 
 
-    val conj = Blackboard().getAll(_.role == Role_NegConjecture).head
-    Blackboard().send(SZSScriptMessage(conj)(conj.context), extProver)
+  val conj = Blackboard().getAll(_.role == Role_NegConjecture).head
+  Blackboard().send(SZSScriptMessage(conj)(conj.context), extProver)
 
-    initWait()
+  initWait()
 
-    Scheduler().signal()
+  Scheduler().signal()
 
-    waitAgent.synchronized{while(!waitAgent.finish) {waitAgent.wait()}}
-    if(waitAgent.scedKill) return false
+  waitAgent.synchronized{while(!waitAgent.finish) {waitAgent.wait()}}
+  if(waitAgent.scedKill) return false
 
-    end()
-    return true
+  end()
+  return true
+
+
   }
 }
 
@@ -474,6 +490,11 @@ object RemoteCounterSatPhase extends CompletePhase {
 object PreprocessPhase extends CompletePhase {
   override val name = "PreprocessPhase"
   override protected val agents: Seq[Agent] = List(new NormalClauseAgent(DefExpansion), new NormalClauseAgent(Simplification), new NormalClauseAgent(NegationNormal),new NormalClauseAgent(Skolemization))
+}
+
+object SimplificationPhase extends CompletePhase {
+  override val name = "PreprocessPhase"
+  override protected val agents: Seq[Agent] = List(new NormalClauseAgent(DefExpansion), new NormalClauseAgent(Simplification))
 }
 
 object ExhaustiveClausificationPhase extends CompletePhase {
