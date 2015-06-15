@@ -2,12 +2,11 @@ package leo
 package agents.impl
 
 import leo.agents._
-import leo.datastructures.blackboard.{FormulaStore, Event, Message}
-import leo.datastructures.context.{BetaSplit, AlphaSplit, NoSplit, Context}
+import leo.datastructures.blackboard._
+import leo.datastructures.context.{BetaSplit, NoSplit, Context}
 import leo.datastructures.impl.Signature
-import leo.datastructures.{HOLSignature, Type}
-import leo.modules.Utility
-import leo.modules.proofCalculi.splitting.DomainConstrainedSplitting
+import leo.datastructures.{Role_Plain, Type}
+import leo.modules.calculus.splitting.DomainConstrainedSplitting
 
 /**
  *
@@ -20,17 +19,17 @@ import leo.modules.proofCalculi.splitting.DomainConstrainedSplitting
  * @author Max Wisniewski
  * @since 2/19/2015
  */
-class DomainConstrainedSplitAgent extends FifoAgent{
+class DomainConstrainedSplitAgent extends Agent {
   override def name: String = "DomainConstrainedAgent"
 
-  override protected def toFilter(event: Event): Iterable[Task] = event match {
+  override def toFilter(event: Event): Iterable[Task] = event match {
     case DomainConstrainedMessage(n) if Context().splitKind == NoSplit => List(new DomainConstrainedTask(n))
     case _ => Nil
   }
 
 
   override def run(t: Task): Result = {
-    if(Context().splitKind != NoSplit) return EmptyResult
+    if(Context().splitKind != NoSplit) return Result()
     t match {
       case t1 : DomainConstrainedTask =>
         // Utility.printSignature()
@@ -38,22 +37,22 @@ class DomainConstrainedSplitAgent extends FifoAgent{
         val s : Set[Type]= s1.map {k => Type.mkType(k)}
         // TODO: Give the combination of domain constraints to the agent. At the moment same size
         val b = Context().split(BetaSplit, t1.card.size)
-        if(!b) {return EmptyResult}
+        if(!b) {return Result()}
 
         val children = Context().childContext
-        var cardAx : Set[FormulaStore] = Set.empty
         val it = children.iterator
         var i : Int = 1
+        val r = Result()
         while(i <= t1.card.size) {
           val c = it.next()
           val cardi = t1.card(i-1)
-          val ax = s.map(DomainConstrainedSplitting.cardinalityAxioms(cardi)(_)).flatten.toList.map(_.newContext(c))
-          cardAx = cardAx ++ ax
+          val ax = s.map(DomainConstrainedSplitting.cardinalityAxioms(cardi)(_)).flatten.toList.map(f => Store(f.clause, Role_Plain, c, f.status)/*newOrigin(Nil,"CardAxiom")*/).foreach{f => r.insert(FormulaType)(f)}
           i = i+1
         }
 
-        return new StdResult(cardAx, Map.empty, Set.empty)
-      case _ => EmptyResult
+
+        return r
+      case _ => Result()
     }
   }
 }

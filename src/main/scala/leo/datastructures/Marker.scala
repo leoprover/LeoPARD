@@ -1,5 +1,7 @@
 package leo.datastructures
 
+import leo.datastructures.blackboard.FormulaStore
+
 
 /////////////////////////////////////////////
 // Collection of potentially globally used
@@ -107,6 +109,28 @@ abstract sealed class ClauseOrigin extends Ordered[ClauseOrigin] {
 case object FromAxiom extends ClauseOrigin { val priority = 3 }
 case object FromConjecture extends ClauseOrigin { val priority = 2 }
 case object Derived extends ClauseOrigin { val priority = 1 }
+
+
+abstract sealed class ClauseAnnotation extends Pretty
+case class InferredFrom(rule: leo.modules.calculus.CalculusRule, fs: Set[FormulaStore]) extends ClauseAnnotation {
+  def pretty: String = s"inference(${rule.name},[${rule.inferenceStatus.fold("")("status("+_.pretty.toLowerCase+")")}],[${fs.map(_.name).mkString(",")}])"
+}
+case object NoAnnotation extends ClauseAnnotation {
+  val pretty: String = ""
+}
+case class FromFile(fileName: String, formulaName: String) extends ClauseAnnotation {
+  def pretty = s"file('$fileName',$formulaName)"
+}
+
+object ClauseAnnotation {
+  def apply(rule: leo.modules.calculus.CalculusRule, cls: Set[FormulaStore]): ClauseAnnotation =
+    new InferredFrom(rule, cls)
+
+  def apply(rule: leo.modules.calculus.CalculusRule, cl: FormulaStore): ClauseAnnotation =
+    new InferredFrom(rule, Set(cl))
+
+  def apply(file: String, name: String): ClauseAnnotation = new FromFile(file, name)
+}
 
 
 //////////////////////////////////////////////

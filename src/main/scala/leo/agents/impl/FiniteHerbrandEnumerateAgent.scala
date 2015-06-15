@@ -1,10 +1,10 @@
 package leo.agents.impl
 
 import leo.agents._
-import leo.datastructures.blackboard.{FormulaStore, FormulaEvent, Event}
+import leo.datastructures._
+import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
-import leo.datastructures.term.Term
-import leo.datastructures.term.Term._
+import Term._
 import leo.datastructures._
 import leo.modules.countersat.FiniteHerbrandEnumeration
 
@@ -19,18 +19,19 @@ import leo.modules.countersat.FiniteHerbrandEnumeration
  * @author Max Wisniewski
  * @since 3/2/15
  */
-class FiniteHerbrandEnumerateAgent(c : Context, domain : Map[Type, Seq[Term]]) extends FifoAgent {
+class FiniteHerbrandEnumerateAgent(c : Context, domain : Map[Type, Seq[Term]]) extends Agent {
 
   private val replace : Map[Type, (Term, Term)] = FiniteHerbrandEnumeration.generateReplace(domain)
   private val size = if(domain.isEmpty) 0 else domain.values.head.length
   private val usedDomains : Set[Type] = domain.keySet
 
-  override protected def toFilter(event: Event): Iterable[Task] = event match {
-    case FormulaEvent(f) if f.context.parentContext == null =>
-      if(f.clause.lits.exists{l => containsDomain(l.term)})
+  override def toFilter(event: Event): Iterable[Task] = event match {
+    case DataEvent(f : FormulaStore, FormulaType) if f.context.parentContext == null =>
+      if(f.clause.lits.exists{l => containsDomain(l.term)}) {
         List(FiniteHerbrandEnumerateTask(f))
-      else
+      } else {
         Nil
+      }
     case _  => Nil
   }
 
@@ -43,9 +44,7 @@ class FiniteHerbrandEnumerateAgent(c : Context, domain : Map[Type, Seq[Term]]) e
 
       case s@Symbol(_)       => false
       case s@Bound(_,_)      => false
-      case s @@@ t            => containsDomain(s) || containsDomain(t)
       case f ∙ args           => containsDomain(f) || args.exists(_.fold({t => containsDomain(t)},(t => false)))
-      case s @@@@ ty          => containsDomain(s)
       case ty :::> s        => containsDomain(s)
       case TypeLambda(t)    => containsDomain(t)
     }
@@ -63,25 +62,19 @@ class FiniteHerbrandEnumerateAgent(c : Context, domain : Map[Type, Seq[Term]]) e
   override def run(t: Task): Result = t match {
     case FiniteHerbrandEnumerateTask(f) =>
       val nc = FiniteHerbrandEnumeration.replaceQuantOpt(f.clause, replace)
-      val f1 = f.newClause(nc).newContext(c).newName(f.name + "_"+size)
-      return new StdResult(Set(f1), Map.empty, Set.empty)
-    case _ => EmptyResult
+      val f1 : FormulaStore = Store(f.name + "_"+size, nc, Role_Plain, c, f.status, NoAnnotation)//.newOrigin(List(f),"finite Herbrand enumeration")
+      val r = Result()
+      r.insert(FormulaType)(f1)
+      return r
+    case _ => Result()
+  }
+
+  final private case class FiniteHerbrandEnumerateTask(f : FormulaStore) extends Task {
+    override val name: String = "FiniteHerbrandEnumerateTask"
+    override def writeSet(): Set[FormulaStore] = Set.empty
+    override def readSet(): Set[FormulaStore] = Set(f)
+    override def bid(budget: Double): Double = budget/20
+    override lazy val pretty: String = s"FiniteHerbrandEnumerateTask(${f.pretty}"
   }
 }
 
-
-private class FiniteHerbrandEnumerateTask(val f : FormulaStore) extends Task {
-  override def name: String = "FiniteHerbrandEnumerateTask"
-  override def writeSet(): Set[FormulaStore] = Set.empty
-  override def readSet(): Set[FormulaStore] = Set(f)
-  override def bid(budget: Double): Double = budget/20
-  override def pretty: String = s"FiniteHerbrandEnumerateTask(${f.pretty}"
-}
-
-object FiniteHerbrandEnumerateTask {
-  def apply(f : FormulaStore) : Task = new FiniteHerbrandEnumerateTask(f)
-  def unapply(e : Task) : Option[FormulaStore] = e match {
-    case fe : FiniteHerbrandEnumerateTask => Some(fe.f)
-    case _      => None
-  }
-}

@@ -1,13 +1,9 @@
 package leo.agents
 package impl
 
+import leo.datastructures.blackboard
 import leo.datastructures.context.Context
-import leo.datastructures.impl.Signature
-import leo.datastructures.===
-import leo.datastructures.blackboard.FormulaStore
-import leo.datastructures.term.Term
-import leo.datastructures.Role_Definition
-import Term._
+import leo.datastructures.blackboard.{FormulaStore, Result}
 import java.io.{PrintWriter, File}
 import leo.modules.output.{ToTPTP, Output}
 import leo.modules.output.logger._
@@ -16,23 +12,6 @@ import scala.collection.mutable.ListBuffer
 
 import scala.sys.process._
 import java.io.IOException
-
-//object ScriptAgent {
-//  /**
-//   * Performs an initial check, whether the script is existing
-//   * and then starts the ScriptAgent.
-//   *
-//   * @param path - Path to the script
-//   * @return ScriptAgent with that script
-//   */
-//  def apply(path : String) : Option[Agent] = {
-//    if(new java.io.File(path).exists())
-//      if(path.charAt(0)!='/' && path.charAt(0) != '.') Some(new ScriptAgent("./"++path))
-//      else Some(new ScriptAgent(path))
-//    else
-//      None
-//  }
-//}
 
 /**
  * <p>
@@ -49,9 +28,9 @@ import java.io.IOException
  * @author Max Wisniewski
  * @since 11/10/14
  */
-abstract class ScriptAgent(path : String) extends FifoAgent {
+abstract class ScriptAgent(path : String) extends Agent {
 
-  def handle(c : Context, input : Iterator[String], err : Iterator[String], errno : Int) : Result
+  def handle(c : Context, input : Iterator[String], err : Iterator[String], errno : Int) : blackboard.Result
 
   /**
    *
@@ -62,20 +41,6 @@ abstract class ScriptAgent(path : String) extends FifoAgent {
   private val extSet : mutable.Set[Process] = new mutable.HashSet[Process]()
 
   private val exec : File = new File(path)
-
-//  private val exec : File = {
-//    val f = File.createTempFile(path,".sh")
-//    f.deleteOnExit()
-//    val writer = new PrintWriter(f)
-//    try{
-//      writer.println("#!/bin/sh")
-//      writer.println(path+" $1")
-//      writer.println("echo $?")
-//      writer.println("exit 0")
-//    } finally writer.close()
-//    Process(s"chmod u+x ${f.getAbsolutePath}").!
-//    f
-//  }
 
   /**
    * This function runs the specific agent on the registered Blackboard.
@@ -128,7 +93,7 @@ abstract class ScriptAgent(path : String) extends FifoAgent {
         process.destroy()                     // In case we finished early and did not read till the end.
         return h
     case _  => Out.info(s"[$name]: Recevied a wrong task $t.")
-      return EmptyResult
+      return Result()
   }
 
 
@@ -144,14 +109,15 @@ abstract class ScriptAgent(path : String) extends FifoAgent {
     extSet foreach {p => p.destroy()}
     extSet.clear()
   }; super.kill()
-}
 
-class ScriptTask(val fs : Set[FormulaStore], val c : Context) extends Task {
-  override def readSet(): Set[FormulaStore] = fs
-  override def writeSet(): Set[FormulaStore] = Set.empty
-  override def bid(budget: Double): Double = budget
 
-  override val pretty : String = "ScriptTask (BIG)"
-  override val name : String = "Script Call"
+  final case class ScriptTask(fs : Set[FormulaStore], c : Context) extends Task {
+    override def readSet(): Set[FormulaStore] = fs
+    override def writeSet(): Set[FormulaStore] = Set.empty
+    override def bid(budget: Double): Double = budget
+
+    override val pretty : String = "ScriptTask (BIG)"
+    override val name : String = "Script Call"
+  }
 }
 

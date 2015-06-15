@@ -25,7 +25,7 @@ trait TestUtility {
     sig
   }
 
-  def resetTermBank: Unit = {leo.datastructures.term.Term.reset()}
+  def resetTermBank: Unit = {leo.datastructures.Term.reset()}
 
   def resetBlackBoard: Unit = {leo.datastructures.blackboard.Blackboard().clear()}
 

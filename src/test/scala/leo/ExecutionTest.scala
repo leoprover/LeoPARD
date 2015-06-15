@@ -1,7 +1,7 @@
 package leo
 
 import leo.datastructures.impl.Signature
-import leo.datastructures.term.Term
+import leo.datastructures.Term
 import leo.datastructures.{=== => EQUALS, _}
 import Term.{mkTermApp => ap,mkAtom}
 

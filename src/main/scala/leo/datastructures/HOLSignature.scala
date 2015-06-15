@@ -1,8 +1,6 @@
 package leo.datastructures
 
-import leo.datastructures.term._
-import Term.{intToBoundVar, intsToBoundVar, mkApp, mkAtom, mkTermAbs, mkTermApp, Λ}
-import Term.{@@@, Symbol, ∙, @@@@}
+import Term.{intToBoundVar, intsToBoundVar, mkApp, mkAtom, mkTermAbs, mkTermApp, Λ,Symbol,∙}
 import Type.{superKind, typeKind, typeVarToType}
 import leo.datastructures.impl.Signature
 
@@ -98,7 +96,8 @@ trait HOLSignature {
   )
 
   // Standard defined symbols
-  lazy val definedConsts = List(("?", existsDef, forall((1 ->: o) ->: o)), // Key 42
+  lazy val definedConsts = List(
+    ("?", existsDef, forall((1 ->: o) ->: o)), // Key 42
     ("&",   andDef,  o ->: o ->: o), // Key 43
     ("=>",  implDef, o ->: o ->: o), // Key 44
     ("<=",  ifDef,   o ->: o ->: o), // Key 45
@@ -126,10 +125,10 @@ trait HOLSignature {
   protected def existsDef: Term = Λ(
     mkTermAbs(1 ->: o,
       mkTermApp(not,
-        mkTermApp(all,
+        mkTermApp(Term.mkTypeApp(all, 1),
           mkTermAbs(1,
             mkTermApp(not,
-              mkTermApp((2, (1 ->: o)), (1, 1))))))))
+              mkTermApp((2, 1 ->: o), (1, 1))))))))
 
   protected def andDef: Term = mkTermAbs(o,
     mkTermAbs(o,
@@ -185,7 +184,7 @@ trait HOLSignature {
       mkTermAbs(1,
         mkTermApp(not,
           mkTermApp(
-            mkTermApp(eq,
+            mkTermApp(Term.mkTypeApp(eq, 1),
               (2, 1)),
               (1, 1))))))
 }
@@ -254,7 +253,6 @@ trait HOLBinaryConnective extends Function2[Term, Term, Term] {
   override def apply(left: Term, right: Term): Term = mkTermApp(mkAtom(key), Seq(left, right))
 
   def unapply(t: Term): Option[(Term,Term)] = t match {
-    case (Symbol(`key`) @@@ t1) @@@ t2 => Some((t1,t2))
     case Symbol(`key`) ∙ Seq(Left(t1), Left(t2)) => Some((t1,t2))
     case _ => None
   }
@@ -269,7 +267,6 @@ trait PolyBinaryConnective extends HOLBinaryConnective {
   override def apply(left: Term, right: Term): Term = mkApp(mkAtom(key), Seq(Right(left.ty), Left(left), Left(right)))
 
   override def unapply(t: Term): Option[(Term,Term)] = t match {
-    case ((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2 => Some((t1,t2))
     case (Symbol(`key`) ∙ Seq(Right(_), Left(t1), Left(t2))) => Some((t1, t2))
     case _ => None
   }
@@ -283,7 +280,6 @@ trait HOLUnaryConnective extends Function1[Term, Term] {
   override def apply(arg: Term): Term = mkTermApp(mkAtom(key), arg)
 
   def unapply(t: Term): Option[Term] = t match {
-    case (Symbol(`key`) @@@ t1) => Some(t1)
     case Symbol(`key`) ∙ Seq(Left(t1)) => Some(t1)
     case _ => None
   }
@@ -298,7 +294,6 @@ trait PolyUnaryConnective extends HOLUnaryConnective {
   override def apply(arg: Term): Term = mkApp(mkAtom(key), Seq(Right(arg.ty), Left(arg)))
 
   override def unapply(t: Term): Option[Term] = t match {
-    case (Symbol(`key`) @@@@ _) @@@ t1 => Some(t1)
     case Symbol(`key`) ∙ Seq(Right(_), Left(t1)) => Some(t1)
     case _ => None
   }
@@ -352,7 +347,6 @@ object Forall extends HOLUnaryConnective { val key = forallKey
   override def apply(arg: Term): Term = mkApp(mkAtom(key), Seq(Right(arg.ty._funDomainType), Left(arg)))
 
   override def unapply(t: Term): Option[Term] = t match {
-    case ((Symbol(`key`) @@@@ _) @@@ t1) => Some(t1)
     case (Symbol(`key`) ∙ Seq(Right(_), Left(t1))) => Some(t1)
     case _ => None
   }
@@ -362,7 +356,6 @@ object Exists extends HOLUnaryConnective { val key = existsKey
   override def apply(arg: Term): Term = mkApp(mkAtom(key), Seq(Right(arg.ty._funDomainType), Left(arg)))
 
   override def unapply(t: Term): Option[Term] = t match {
-    case ((Symbol(`key`) @@@@ _) @@@ t1) => Some(t1)
     case (Symbol(`key`) ∙ Seq(Right(_), Left(t1))) => Some(t1)
     case _ => None
   }
@@ -373,7 +366,6 @@ object Choice extends HOLUnaryConnective { val key = choiceKey
   override def apply(arg: Term): Term = mkApp(mkAtom(key), Seq(Right(arg.ty._funDomainType), Left(arg)))
 
   override def unapply(t: Term): Option[Term] = t match {
-    case ((Symbol(`key`) @@@@ _) @@@ t1) => Some(t1)
     case (Symbol(`key`) ∙ Seq(Right(_), Left(t1))) => Some(t1)
     case _ => None
   }
@@ -383,7 +375,6 @@ object Description extends HOLUnaryConnective { val key = descKey
   override def apply(arg: Term): Term = mkApp(mkAtom(key), Seq(Right(arg.ty._funDomainType), Left(arg)))
 
   override def unapply(t: Term): Option[Term] = t match {
-    case ((Symbol(`key`) @@@@ _) @@@ t1) => Some(t1)
     case (Symbol(`key`) ∙ Seq(Right(_), Left(t1))) => Some(t1)
     case _ => None
   }
@@ -441,9 +432,7 @@ object IF_THEN_ELSE extends Function3[Term, Term, Term, Term] {
   override def apply(cond: Term, thn: Term, els: Term): Term = mkApp(mkAtom(key), Seq(Right(thn.ty), Left(cond), Left(thn), Left(els)))
 
   def unapply(t: Term): Option[(Term,Term, Term)] = t match {
-    case (((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2) @@@ t3 => Some((t1,t2,t3))
     case (Symbol(`key`) ∙ Seq(Right(_), Left(t1), Left(t2), Left(t3))) => Some((t1,t2,t3))
     case _ => None
   }
 }
-

@@ -1,8 +1,7 @@
 package leo.datastructures
 
 import leo.Configuration
-import leo.datastructures.term.Term
-import leo.datastructures.term.Term.{λ}
+
 
 /**
  * Clause interface, the companion object `Clause` offers several constructors methods.
@@ -21,9 +20,16 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   /** The source from where the clause was created, See `ClauseOrigin`. */
   def origin: ClauseOrigin
   /** The types of the implicitly universally quantified variables. */
+  def freeVars: Set[Term]
   def implicitBindings: Seq[Type]
 
   def isEmpty: Boolean = lits.isEmpty
+  /** all literals `lt` with `lt.flexHead`, i.e. with a flexible head. */
+  def flexHeadLits: Set[Literal]
+  /** all literals `lt` with `lt.isUni`. */
+  def uniLits: Set[Literal]
+  /** all positive equality literals */
+  def eqLits: Set[Literal]
 
   def compare(that: Clause) = Configuration.CLAUSE_ORDERING.compare(this, that)
 
@@ -36,7 +42,7 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
 
   def merge(that : Clause) = {
     val newBindings = implicitBindings ++ that.implicitBindings
-    val liftedThis = lits.map(_.termMap(_.closure(Subst.shift(that.implicitBindings.length))))
+    val liftedThis = lits.map(_.termMap(_.closure(Subst.shift(that.implicitBindings.length)))) // TODO betanormalize
     val newLits = liftedThis ++ that.lits
     Clause.mkClause(newLits, newBindings, Derived)
   }
@@ -58,12 +64,23 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
         }
       })
 
+  override def equals(obj : Any) : Boolean = obj match {
+    case co : Clause =>
+      cong(co)
+    case _ => false
+  }
+
+  override def hashCode() : Int = lits.map(_.hashCode()).fold(0){(a,b) => a^b}  // XOR on all literal hascodes
+
   // TODO: Maybe move this to "utilities"?
   private def mkDisjunction(terms: Seq[Term]): Term = terms match {
     case Seq() => LitFalse()
     case Seq(t, ts@_*) => ts.foldLeft(t)({case (disj, t) => |||(disj, t)})
   }
-  private def mkPolyUnivQuant(bindings: Seq[Type], term: Term): Term = bindings.foldRight(term)((ty,t) => Forall(λ(ty)(t)))
+  private def mkPolyUnivQuant(bindings: Seq[Type], term: Term): Term = {
+    import Term.λ
+    bindings.foldRight(term)((ty,t) => Forall(λ(ty)(t)))
+  }
 }
 
 object Clause {

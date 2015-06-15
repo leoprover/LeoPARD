@@ -1,12 +1,10 @@
 package leo.modules.output
 
+import leo.datastructures._
 import leo.datastructures.impl.Signature
-import leo.datastructures.term.Term._
+import Term._
 import leo.datastructures.Type._
 import leo.datastructures._
-import leo.datastructures.term._
-import leo.modules.output.ToTPTP
-import leo.modules.output.logger.Out
 import scala.annotation.tailrec
 import leo.datastructures.blackboard.FormulaStore
 
@@ -49,6 +47,10 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
     formulas foreach {formula =>
       out = ToTPTP(formula) :: out}
     out.reverse
+  }
+
+  def withAnnotation(f: FormulaStore): Output = new Output {
+    def output = toTPTP(f.name, f.clause.toTerm, f.role, f.annotation)
   }
 
   /**
@@ -101,7 +103,10 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
   // Translation of THF formula
   ///////////////////////////////
   // TODO: Fixme write translation from clause
-  private def toTPTP(name: String, t: Term, role: Role): String = s"thf($name, ${role.pretty}, (${toTPTP0(t, Seq.empty)}))."
+  private def toTPTP(name: String, t: Term, role: Role, clauseAnnotation: ClauseAnnotation = NoAnnotation): String = clauseAnnotation match {
+    case NoAnnotation => s"thf($name, ${role.pretty}, (${toTPTP0(t, Seq.empty)}))."
+    case other => s"thf($name, ${role.pretty}, (${toTPTP0(t, Seq.empty)}),${other.pretty})."
+  }
 
   private def toTPTP0(t: Term, bVars: Seq[(String, Type)]): String = "("+{
     val sig = Signature.get
@@ -116,6 +121,7 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
         }
       }
       // Give Bound variables names
+      case m@MetaVar(_,scope) => "sV"+scope
       case Bound(ty, scope) => bVars(scope-1)._1
       // Unary connectives
       case Not(t2) => s"${sig(Not.key).name} (${toTPTP0(t2, bVars)})"
@@ -140,7 +146,6 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
       case _ :::> _ => val (bVarTys, body) = collectLambdas(t)
                        val newBVars = makeBVarList(bVarTys, bVars.length)
                        s"^ [${newBVars.map({case (s,t) => s"$s:${toTPTP(t)}"}).mkString(",")}]: (${toTPTP0(body, newBVars.reverse ++ bVars)})"
-      case t1 @@@ t2 => s"${toTPTP0(t1, bVars)} @ ${toTPTP0(t2, bVars)}"
       case f ∙ args => args.foldLeft(toTPTP0(f, bVars))({case (str, arg) => s"($str @ ${toTPTP0(arg.fold(identity, _ => throw new IllegalArgumentException), bVars)})"})
       // Others should be invalid
       case _ => throw new IllegalArgumentException("Unexpected term format during toTPTP conversion")

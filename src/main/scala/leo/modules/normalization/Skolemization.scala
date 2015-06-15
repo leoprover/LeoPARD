@@ -1,8 +1,8 @@
 package leo.modules.normalization
 
-import leo.datastructures.blackboard.FormulaStore
+import leo.datastructures._
+import leo.datastructures.blackboard.{Store, FormulaStore}
 import leo.datastructures.impl.Signature
-import leo.datastructures.term._
 import Term._
 
 import leo.datastructures._
@@ -23,16 +23,18 @@ object Skolemization extends AbstractNormalize{
   /**
    * Normalizes a formula corresponding to the object.
    *
+   * IMPORTANT: Does only work after NegationNormal form, since polarity is not considered here.
+   *
    * @param formula - A annotated formula
    * @return a normalized formula
    */
   override def normalize(formula : Clause) : Clause = {
-    formula.mapLit(_.termMap(internalNormalize(_)))
+    formula.mapLit(_.termMap(internalNormalize(_, formula.freeVars)))
   }
 
-  private def internalNormalize(formula: Term): Term = {
+  private def internalNormalize(formula: Term, fV: Set[Term]): Term = {
     val mini = miniscope(formula)
-    val r = skolemize(mini)
+    val r = skolemize(mini, fV.toSeq)
     r
   }
 
@@ -45,33 +47,38 @@ object Skolemization extends AbstractNormalize{
    * @param formula
    * @return
    */
-  private def skolemize(formula : Term) : Term = formula match {
+  private def skolemize(formula : Term, univBounds: Seq[Term]) : Term = formula match {
       //Remove exist quantifier
       // TODO: Raising Bound variables is borken. Fix it.
-    case Exists(ty :::> t)  =>
-      //val t1 = skolemize(t)
-      val free : List[(Int, Type)] = Simplification.freeVariables(t).filter{case (a,b) => a > 1}.map{case (a,b) => (a-1,b)}
-      // A skolemvariable takes all above instantiated variables and is a function from these to an
-      // object of type ty.
-      val types = free map (x => x._2)
-      val skoType = Type.mkFunType(types, ty)
+    case Exists(s@(ty :::> t))  =>
+//      println("step: freevars: "+s.freeVars.map{_.pretty}.mkString(","))
+//      println("step: looseBounds: " + looseBounds.map{_.pretty}.mkString(","))
+      val fvs = univBounds //(s.freeVars diff looseBounds).toSeq
+//      println("freevars im skolemization: " + fvs.map(_.pretty).mkString(","))
+      val fv_types = fvs.map(_.ty)
+      import leo.datastructures.impl.Signature
+      val skConst = Term.mkAtom(Signature.get.freshSkolemVar(Type.mkFunType(fv_types, ty)))
+      val skTerm = Term.mkTermApp(skConst, fvs)
 
-      // Creating a fresh Variable of this type and applying it to all free variables
-      val skoVar = mkTermApp(mkAtom(Signature.get.freshSkolemVar(skoType)),free map {case (a,b) => mkBound(b,a)})
-//      println("New skoVar '"+skoVar.pretty+"' in term '"+(Exists(\(ty)(t1))).pretty+"'.")
-      //Lastly replacing the Skolem variable for the Quantifier (thereby raising the free variables)
-      // TODO move to Term
-      val norm = mkTermApp(\(ty)(t), skoVar).closure(free.foldRight(Subst.id){(_,s) => TermFront(1) +: s}).betaNormalize
-      skolemize(norm)
+
+      var sub: Map[Int, Int] = Map()
+      val lBIt = s.looseBounds.iterator
+      while (lBIt.hasNext) {
+        val b = lBIt.next()
+        sub = sub + (b+1 -> b)
+      }
+      val norm = t.closure(Subst.fromMaps(Map(1 -> skTerm),sub)).betaNormalize
+//      println("step in skolemization: " + norm.pretty)
+
+      skolemize(norm, univBounds)
       // Pass through
+    case Forall(ty :::> t) => Forall(mkTermAbs(ty,skolemize(t, univBounds.map{case Bound(ty, sc) => mkBound(ty, sc+1)} :+ mkBound(ty, 1))))
 
     case s@Symbol(_)            => s
     case s@Bound(_,_)           => s
-    case s @@@ t    => mkTermApp(skolemize(s),skolemize(t))
-    case s @@@@ ty  => mkTypeApp(skolemize(s),ty)
-    case f ∙ args   => Term.mkApp(skolemize(f), args.map(_.fold({t => Left(skolemize(t))},(Right(_)))))
-    case ty :::> s  => mkTermAbs(ty, skolemize(s))
-    case TypeLambda(t) => mkTypeAbs(skolemize(t))
+    case f ∙ args   => Term.mkApp(skolemize(f, univBounds), args.map(_.fold({t => Left(skolemize(t, univBounds))},(Right(_)))))
+    case ty :::> s  => mkTermAbs(ty, skolemize(s, univBounds.map{case Bound(ty, sc) => mkBound(ty, sc+1)}))
+    case TypeLambda(t) => mkTypeAbs(skolemize(t, univBounds))
 //    case _  => formula
   }
 
@@ -109,9 +116,7 @@ object Skolemization extends AbstractNormalize{
       // In neither of the above cases, move inwards
       case s@Symbol(_)            => s
       case s@Bound(_,_)           => s
-      case s @@@ t    => Exists(\(ty)(mkTermApp(miniscope(s),miniscope(t))))
       case f ∙ args   => Exists(\(ty)(Term.mkApp(miniscope(f), args.map(_.fold({t => Left(miniscope(t))},(Right(_)))))))
-      case s @@@@ ty  => Exists(\(ty)(mkTypeApp(miniscope(s),ty)))
       case ty :::> s  => Exists(\(ty)(mkTermAbs(ty, miniscope(s))))
       case TypeLambda(t) => Exists(\(ty)(mkTypeAbs(miniscope(t))))
 //      case _  => formula
@@ -145,8 +150,6 @@ object Skolemization extends AbstractNormalize{
       // In neither of the above cases, move inwards
       case s@Symbol(_)            => s
       case s@Bound(_,_)           => s
-      case s @@@ t    => Forall(\(ty)(mkTermApp(miniscope(s),miniscope(t))))
-      case s @@@@ ty  => Forall(\(ty)(mkTypeApp(miniscope(s),ty)))
       case f ∙ args   => Forall(\(ty)(Term.mkApp(miniscope(f), args.map(_.fold({t => Left(miniscope(t))},(Right(_)))))))
       case ty :::> s  => Forall(\(ty)(mkTermAbs(ty, miniscope(s))))
       case TypeLambda(t) => Forall(\(ty)(mkTypeAbs(miniscope(t))))
@@ -156,8 +159,6 @@ object Skolemization extends AbstractNormalize{
       // In neither of the above cases, move inwards
     case s@Symbol(_)            => s
     case s@Bound(_,_)           => s
-    case s @@@ t    => mkTermApp(miniscope(s),miniscope(t))
-    case s @@@@ ty  => mkTypeApp(miniscope(s),ty)
     case f ∙ args   => Term.mkApp(miniscope(f), args.map(_.fold({t => Left(miniscope(t))},(Right(_)))))
     case ty :::> s  => mkTermAbs(ty, miniscope(s))
     case TypeLambda(t) => mkTypeAbs(miniscope(t))
@@ -167,5 +168,5 @@ object Skolemization extends AbstractNormalize{
 
   override def applicable(status : Int): Boolean = (status & 15) == 7
 
-  def markStatus(fs : FormulaStore) : FormulaStore = fs.newStatus(fs.status | 15)
+  def markStatus(fs : FormulaStore) : FormulaStore = Store(fs.clause, Role_Plain, fs.context, fs.status | 15)
 }

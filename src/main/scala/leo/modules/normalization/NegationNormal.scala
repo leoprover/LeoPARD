@@ -1,7 +1,7 @@
 package leo.modules.normalization
 
-import leo.datastructures.blackboard.FormulaStore
-import leo.datastructures.term._
+import leo.datastructures._
+import leo.datastructures.blackboard.{Store, FormulaStore}
 import Term._
 import leo.datastructures._
 
@@ -22,10 +22,12 @@ object NegationNormal extends AbstractNormalize{
    * @return a normalized formula
    */
   override def normalize(formula: Clause): Clause = {
-    formula.mapLit { l => l.termMap { t =>
-        val t1 = if (l.polarity) t else Not(t)
-        nnf(rmEq(t1, 1))
-      }.flipPolarity
+    formula.mapLit { l =>
+        val l1 = l.termMap { t =>
+          val t1 = if (l.polarity) t else Not(t)
+          nnf(rmEq(t1, 1))
+        }
+        if(l.polarity) l1 else l1.flipPolarity
     }
   }
 
@@ -40,8 +42,7 @@ object NegationNormal extends AbstractNormalize{
 
     case s@Symbol(_)            => s
     case s@Bound(_,_)           => s
-    case s @@@ t                => mkTermApp(rmEq(s,pol),rmEq(t,pol))
-    case s @@@@ ty              => mkTypeApp(rmEq(s,pol),ty)
+    case s@MetaVar(_,_)         => s
     case f ∙ args               => Term.mkApp(rmEq(f,pol), args.map(_.fold({t => Left(rmEq(t,pol))},(Right(_)))))
     case ty :::> t              => mkTermAbs(ty, rmEq(t,pol))
     case TypeLambda(t)          => mkTypeAbs(rmEq(t,pol))
@@ -73,8 +74,7 @@ object NegationNormal extends AbstractNormalize{
 
     case s@Symbol(_)            => s
     case s@Bound(_,_)           => s
-    case s @@@ t                => mkTermApp(nnf(s), nnf(t))
-    case s @@@@ ty              => mkTypeApp(nnf(s), ty)
+    case s@MetaVar(_,_)         => s
     case f ∙ args               => Term.mkApp(nnf(f), args.map(_.fold({t => Left(nnf(t))},(Right(_)))))
     case ty :::> t              => mkTermAbs(ty, nnf(t))
     case TypeLambda(t)          => mkTypeAbs(nnf(t))
@@ -88,5 +88,5 @@ object NegationNormal extends AbstractNormalize{
    */
   override def applicable(status : Int): Boolean = (status & 7) == 3
 
-  def markStatus(fs : FormulaStore) : FormulaStore = fs.newStatus(fs.status | 7)
+  def markStatus(fs : FormulaStore) : FormulaStore = Store(fs.clause, Role_Plain, fs.context, fs.status | 7)
 }

@@ -1,11 +1,10 @@
 package leo.agents
 package impl
 
-import leo.agents.{EmptyResult, Result, Task}
+import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSStore}
 import leo.datastructures.context.Context
-import leo.datastructures.term.Term
 import leo.datastructures._
-import leo.datastructures.blackboard.{Blackboard, FormulaStore, Event, Message}
+import leo.datastructures.blackboard._
 import leo.modules.output.{SZS_GaveUp, StatusSZS}
 import leo.modules.output.logger.Out
 
@@ -39,7 +38,7 @@ class SZSScriptAgent(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) 
         case Some(status) =>
           context.close()
           Out.info(s"[$name]: Got ${status.output} from the external prover.")
-          return new ContextResult(context, reinterpreteResult(status))
+          return Result().insert(StatusType)(SZSStore(reinterpreteResult(status), context))
         case None         => ()
       }
     }
@@ -50,13 +49,13 @@ class SZSScriptAgent(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) 
         case Some(status) =>
           context.close()
           Out.info(s"[$name]: Got ${status.output} from the external prover.")
-          return new ContextResult(context, reinterpreteResult(status))
+          return Result().insert(StatusType)(SZSStore(reinterpreteResult(status), context))
         case None         => ()
       }
     }
     Out.info(s"[$name]: No SZS status returned in\n${b.toString}")
     context.close()
-    return new ContextResult(context, SZS_GaveUp)
+    return Result().insert(StatusType)(SZSStore(SZS_GaveUp, context))
   }
 
   /**
@@ -67,15 +66,15 @@ class SZSScriptAgent(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) 
    */
   def getSZS(line : String) : Option[StatusSZS] = StatusSZS.answerLine(line)
 
-  override protected def toFilter(event: Event): Iterable[Task] = event match {
+  override def toFilter(event: Event): Iterable[Task] = event match {
     case SZSScriptMessage(f,c) => createTask(f,c)
     case _                   => List()
   }
 
   private def createTask(f : FormulaStore, c : Context) : Iterable[Task] = {
     Out.trace(s"[$name]: Got a task.")
-    val conj = f.newRole(Role_Conjecture).newClause(negateClause(f.clause))
-    val context : Set[FormulaStore] = Blackboard().getAll(f.context){bf => bf.name != f.name}.toSet[FormulaStore]
+    val conj = Store(negateClause(f.clause), Role_Conjecture, f.context, f.status)
+    val context : Set[FormulaStore] = FormulaDataStore.getAll(f.context){bf => bf.name != f.name}.toSet[FormulaStore]
     return List(new ScriptTask(context + conj, c))
   }
 

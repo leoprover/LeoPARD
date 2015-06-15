@@ -1,7 +1,5 @@
 package leo.datastructures
 
-import leo.datastructures.term.Term
-
 /**
  * Representation of substitution `s` that are basically
  * linear lists of terms or types or shifts.
@@ -46,6 +44,15 @@ sealed abstract class Subst extends Pretty {
   def substBndIdx(i: Int): Front
   /** Return all fronts as linear list */
   def fronts: Seq[Front]
+
+//  /** Convecience method: Convert all fronts in substitution to terms (if not a type substitution) */
+//  def terms: Seq[Term] = {
+//    fronts.map {
+//      case BoundFront(i) => Term.mkBound(???, i)
+//      case TermFront(t) => t
+//      case _ => throw new IllegalArgumentException("#terms called on type substitution.")
+//    }
+//  }
 }
 
 /** Generic factory methods for substitutions. Current default implementation are
@@ -56,6 +63,62 @@ object Subst {
   val id: Subst    = SubstImpl.id
   val shift: Subst = SubstImpl.shift
   def shift(n: Int): Subst = SubstImpl.shift(n)
+
+  def singleton(what: Int, by: Term): Subst = {
+    var i = 1
+    var subst: Vector[Front] = Range(1, what-1).map(BoundFront(_)).toVector
+    new SubstImpl(0,subst :+ TermFront(by))
+
+//
+//    var s = Subst.id
+//    for(idx <- 1 to (what-1)) {
+//      s = BoundFront(idx) +: s
+//    }
+//
+//    TermFront(by) +: s
+  }
+
+  def fromMap(map: Map[Int, Term]): Subst = {
+    if (map.isEmpty) {
+      Subst.id
+    } else {
+      var subst: Vector[Front] = Vector()
+      val maxIndex = map.keySet.max
+      var i = 1
+      while (i <= maxIndex) {
+        subst = subst :+ map.get(i).fold(BoundFront(i):Front)(TermFront(_))
+        i = i + 1
+      }
+      new SubstImpl(0, subst)
+    }
+  }
+
+  def fromMaps(termMap: Map[Int, Term], boundMap: Map[Int, Int]): Subst = {
+    if (termMap.isEmpty && boundMap.isEmpty) {
+      Subst.id
+    } else {
+      var subst: Vector[Front] = Vector()
+      val maxIndex = (termMap.keySet ++ boundMap.keySet).max
+      var i = 1
+      while (i <= maxIndex) {
+        if (termMap.isDefinedAt(i)) {
+          subst = subst :+ TermFront(termMap(i))
+        } else if (boundMap.isDefinedAt(i)) {
+          subst = subst :+ BoundFront(boundMap(i))
+        } else {
+          subst = subst :+ BoundFront(i)
+        }
+
+        i = i + 1
+      }
+      new SubstImpl(0, subst)
+    }
+  }
+
+  def fromSeq(seq: Seq[(Int, Term)]): Subst = {
+    val map : Map[Int, Term] = Map.apply(seq:_*)
+    fromMap(map)
+  }
 
   // legacy
   //  def consWithEta(ft: Front, onto: Subst): Subst = ft match {
@@ -71,7 +134,7 @@ object Subst {
 /////////////////////////////////////////////////
 
 /** Substitutions as constant-time accessible vectors */
-protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) extends Subst {
+sealed protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) extends Subst {
 
   lazy val normalize: Subst = new RASubst(shift, fts.map({_ match {
     case TermFront(t) => TermFront(t.betaNormalize)
@@ -129,7 +192,7 @@ object RASubst {
 /////////////////////////////////////////////////
 
 /** Substitutions as algebraic data types (lists). */
-abstract class AlgebraicSubst extends Subst {
+sealed abstract class AlgebraicSubst extends Subst {
   def sink: Subst = (this o Shift(1)).cons(BoundFront(1))
 }
 

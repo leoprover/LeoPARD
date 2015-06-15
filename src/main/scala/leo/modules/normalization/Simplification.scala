@@ -1,8 +1,7 @@
 package leo.modules.normalization
 
 import leo.datastructures._
-import leo.datastructures.blackboard.FormulaStore
-import leo.datastructures.term._
+import leo.datastructures.blackboard.{Store, FormulaStore}
 import leo.datastructures.tptp.cnf.Formula
 
 import scala.language.implicitConversions
@@ -42,6 +41,10 @@ object Simplification extends AbstractNormalize{
     case s === t =>
       (norm(s), norm(t)) match {
         case (s1,t1) if s1 == t1 => LitTrue
+        case (LitTrue(),t1) => t1
+        case (s1,LitTrue()) => s1
+        case (LitFalse(), t1) => Not(t1)
+        case (s1, LitFalse()) => Not(s1)
         case (s1,t1)             => ===(s1,t1)
       }
     case s & t =>
@@ -109,9 +112,8 @@ object Simplification extends AbstractNormalize{
       // Pass through unimportant structures
     case s@Symbol(_)            => s
     case s@Bound(_,_)           => s
-    case s @@@ t    => Term.mkTermApp(norm(s),norm(t))  // Should not happen after beta normalize, unless s is irreduceable
+    case s@MetaVar(_,_)         => s
     case f ∙ args   => Term.mkApp(norm(f), args.map(_.fold({t => Left(norm(t))},(Right(_)))))
-    case s @@@@ ty  => Term.mkTypeApp(norm(s), ty)
     case ty :::> s  => Term.mkTermAbs(ty, norm(s))
     case TypeLambda(t) => Term.mkTypeAbs(norm(t))
 //    case _  => formula
@@ -126,9 +128,7 @@ object Simplification extends AbstractNormalize{
   protected[normalization] def freeVariables(formula : Term) : List[(Int,Type)] = formula match {
     case Bound(t,scope) => List((scope,t))
     case Symbol(id)     => List()
-    case s @@@ t        => freeVariables(s) ++ freeVariables(t)
     case f ∙ args       => freeVariables(f) ++ args.flatMap(_.fold(freeVariables(_), _ => List()))
-    case s @@@@ ty      => freeVariables(s)
     case ty :::> s      => (freeVariables(s) map {case (a:Int,b:Type) => (a-1,b)}) filter {case (a:Int,b:Type) => a>=1}
     case TypeLambda(t)  => freeVariables(t)
   }
@@ -167,5 +167,5 @@ object Simplification extends AbstractNormalize{
   override def applicable(status : Int): Boolean = (status & 1) == 0
 
 
-  def markStatus(fs: FormulaStore): FormulaStore = fs.newStatus(fs.status | 1)
+  def markStatus(fs: FormulaStore): FormulaStore = Store(fs.clause, Role_Plain, fs.context, fs.status | 1)
 }

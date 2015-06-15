@@ -1,13 +1,16 @@
 package leo
 
+import leo.agents.FifoController
 import leo.agents.impl.ContextControlAgent
+import leo.datastructures.blackboard.impl.{SZSDataStore, FormulaDataStore}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.datastructures.{Role_NegConjecture, Role_Conjecture}
-import leo.datastructures.blackboard.Blackboard
+import leo.datastructures.blackboard.{Store, Blackboard}
 import leo.datastructures.impl.Signature
 import leo.modules._
-import leo.modules.output.SZS_Timeout
+import leo.modules.output.{SZS_Unknown, SZS_Timeout}
+import leo.modules.phase.{PreprocessPhase, SimpleEnumerationPhase, ParamodPhase, SimplificationPhase}
 import org.scalatest._
 import java.util.logging.Level._
 
@@ -61,13 +64,15 @@ class PhaseTest extends FunSuite {
       }
 
       //Negate the conjecture by ourselves, since the load phase uses Configurations (not present here)
-      Blackboard().getAll(_.role == Role_Conjecture) foreach { f =>
+      FormulaDataStore.getAll(_.role == Role_Conjecture) foreach { f =>
         assert(f.clause.lits.size == 1, "Found a conjecture with more than one literal.")
-        val nf = f.newClause(f.clause.mapLit(_.flipPolarity)).newRole(Role_NegConjecture).newOrigin(List(f),"Negate-Conjecture")
-        b.removeFormula(f)
-        b.addFormula(nf)
+        val nf = Store(f.clause.mapLit(_.flipPolarity), Role_NegConjecture, f.context, f.status)
+          // newOrigin(List(f),"Negate-Conjecture")
+        FormulaDataStore.removeFormula(f)
+        FormulaDataStore.addFormula(nf)
       }
-      ContextControlAgent.register()
+      val cca = new FifoController(ContextControlAgent)
+      cca.register()
       val it = p._2._2.iterator
       var r = true
       while(it.hasNext && r) {
@@ -79,10 +84,10 @@ class PhaseTest extends FunSuite {
         Out.output(s"\n [Phase]:\n  Ended ${phase.name}\n  Time: ${end-start}ms")
       }
 
-      Out.output(s"%SZS Status ${Blackboard().getStatus(Context()).fold("Unkown")(_.output)} for ${p._1}")
-      Blackboard().getAll{p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
+      Out.output(SZSOutput(SZSDataStore.getStatus(Context()).getOrElse(SZS_Unknown), Configuration.PROBLEMFILE))
+      FormulaDataStore.getAll{p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
 
-      ContextControlAgent.unregister()
+      cca.unregister()
 
 
       Scheduler().clear()

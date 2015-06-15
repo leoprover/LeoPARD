@@ -1,8 +1,9 @@
 package leo.modules.normalization
 
-import leo.datastructures.Clause
-import leo.datastructures.blackboard.FormulaStore
-import leo.datastructures.term.Term
+import leo.datastructures.{ClauseAnnotation, Role_Plain , Clause}
+import leo.datastructures.blackboard.{Store, FormulaStore}
+import leo.modules.output.SZS_Theorem
+import leo.modules.calculus.CalculusRule
 
 /**
  * This trait is shared by every Normalizing Object.
@@ -10,13 +11,16 @@ import leo.datastructures.term.Term
  *
  * Created by Max Wisniewski on 4/7/14.
  */
-trait Normalize extends Function2[FormulaStore,Boolean,FormulaStore] with Function1[FormulaStore,FormulaStore] {
+trait Normalize extends Function2[FormulaStore,Boolean,FormulaStore] with Function1[FormulaStore,FormulaStore] with CalculusRule {
 
   /**
    *
    * @return name of the normalization
    */
   def name : String
+
+  // Should be the case for all normalization steps
+  override val inferenceStatus = Some(SZS_Theorem)
 
   /**
    * Normalizes a formula corresponding to the object.
@@ -33,7 +37,6 @@ trait Normalize extends Function2[FormulaStore,Boolean,FormulaStore] with Functi
    * @return True if a normaliziation is possible, false otherwise
    */
   def applicable (status : Int) : Boolean
-
 }
 
 /**
@@ -42,7 +45,6 @@ trait Normalize extends Function2[FormulaStore,Boolean,FormulaStore] with Functi
  * if possible
  */
 abstract class AbstractNormalize extends Normalize {
-
   /**
    * If check is true, then
    *
@@ -52,9 +54,9 @@ abstract class AbstractNormalize extends Normalize {
    */
   override def apply(formula : FormulaStore, check : Boolean) : FormulaStore = {
     if (check) {
-      if (applicable(formula.status)) markStatus(formula.newClause(normalize(formula.clause))) else formula
+      if (applicable(formula.status)) markStatus(Store(normalize(formula.clause), Role_Plain, formula.context, formula.status, ClauseAnnotation(this, formula))) else formula
     } else
-      markStatus(formula.newClause(normalize(formula.clause)))
+      markStatus(Store(normalize(formula.clause), Role_Plain, formula.context, formula.status, ClauseAnnotation(this, formula)))
   }
 
   /**
@@ -62,7 +64,7 @@ abstract class AbstractNormalize extends Normalize {
    * @param formula
    * @return
    */
-  override def apply(formula : FormulaStore) : FormulaStore =  markStatus(formula.newClause(normalize(formula.clause)))
+  override def apply(formula : FormulaStore) : FormulaStore =  markStatus(Store(normalize(formula.clause), Role_Plain, formula.context, formula.status, ClauseAnnotation(this, formula)))
 
   def markStatus(fs : FormulaStore) : FormulaStore
 }

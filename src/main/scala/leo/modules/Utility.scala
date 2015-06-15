@@ -3,8 +3,9 @@ package modules
 
 import java.io.{PrintWriter, StringWriter, FileNotFoundException, File}
 
-import leo.datastructures.{TermIndex, Role_Definition, Role_Unknown, Role_Type}
-import leo.datastructures.blackboard.{FormulaStore, Blackboard}
+import leo.datastructures.blackboard.impl.FormulaDataStore
+import leo.datastructures._
+import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
 import leo.datastructures.impl.Signature
 import leo.modules.output._
@@ -18,6 +19,10 @@ import scala.collection.immutable.HashSet
  * @since 12/1/14
  */
 object Utility {
+
+  /** The working directory in which the executable was launched from. */
+  val wd: String = System.getenv("user.dir")
+
   /**
    * List of currently loaded tptp files
    */
@@ -44,7 +49,7 @@ object Utility {
     import leo.modules.parsers.TPTP
     import leo.modules.parsers.InputProcessing
 
-
+    Out.debug(s"Loading ${rel.mkString("/")}/${file}.")
     val (fileAbs, path) = newPath(rel, file)
     if (!loadedSet(fileAbs)) {
       try {
@@ -62,8 +67,11 @@ object Utility {
             x.getIncludes.foreach(x => loadRelative(x._1, path))
 
             val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
-            processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown)
-              Blackboard().addFormula(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context())
+            processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
+              val f = Store(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context(), 0, FromFile(fileAbs, name))
+              if (FormulaDataStore.addFormula(f))
+                Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
+              }
             }
         }
 
@@ -72,6 +80,7 @@ object Utility {
           // If not relative, then search in TPTP env variable
           val tptp = System.getenv("TPTP")
           if (tptp != null) {
+            Out.debug(s"Loading ${tptp}/${file}.")
             val tptpHome = tptp.split("/")
             val (fileAbs, path) = newPath(tptpHome, file)
             if (!loadedSet(fileAbs)) {
@@ -90,8 +99,11 @@ object Utility {
                     x.getIncludes.foreach(x => loadRelative(x._1, path))
 
                     val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
-                    processed foreach { case (name, form, role) => if (role != Role_Definition && role != Role_Type && role != Role_Unknown)
-                      Blackboard().addFormula(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context())
+                    processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
+                      val f = Store(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context(), 0, FromFile(fileAbs, name))
+                      if (FormulaDataStore.addFormula(f))
+                        Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
+                      }
                     }
                 }
 
@@ -136,8 +148,11 @@ object Utility {
     TPTP.parseFormula(s) match {
       case Right(a) =>
         val processed = InputProcessing.process(Signature.get)(a)
-        processed.foreach {case (name,form,role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown)
-          Blackboard().addFormula(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context())
+        processed match { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
+          val f = Store(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context(), 0, NoAnnotation)
+          if (FormulaDataStore.addFormula(f))
+            Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
+        }
         }
       case Left(err) =>
         Out.severe(s"'$s' is not a valid formula: $err")
@@ -190,11 +205,11 @@ object Utility {
     println(s"Formulas in Context(id=${c.contextID})")
     println("Name" + " "*(maxNameSize-4) +  " | " + "Role" + " " * (maxRoleSize -4)+" | Formula (in nameless spine representation)")
     println("-"*maxSize)
-    Blackboard().getFormulas(c).foreach {
+    FormulaDataStore.getFormulas(c).foreach {
       x =>
         val name = x.name.toString.take(maxNameSize)
         val role = x.role.pretty.take(maxRoleSize)
-        val form = x.clause.pretty + " ("+x.status+") (context="+x.context.contextID+")"
+        val form = x.clause.pretty + " ("+x.status+") (status="+x.status+")"
         val form1 = form.take(maxFormulaSize)
         val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
 
@@ -214,11 +229,11 @@ object Utility {
 
     println("Name" + " "*(maxNameSize-4) +  " | " + "Role" + " " * (maxRoleSize -4)+" | Formula (in nameless spine representation)")
     println("-"*maxSize)
-    Blackboard().getFormulas.foreach {
+    FormulaDataStore.getFormulas.foreach {
       x =>
         val name = x.name.toString.take(maxNameSize)
         val role = x.role.pretty.take(maxRoleSize)
-        val form = x.clause.pretty + " ("+x.status+") (context="+x.context.contextID+")"
+        val form = x.clause.pretty + " ("+x.status+") (status="+x.status+")"
         val form1 = form.take(maxFormulaSize)
         val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
 
@@ -235,7 +250,7 @@ object Utility {
    * The formula is not ready to manipulate in parallel with this access.
    */
   def get(s: String) : FormulaStore =
-    Blackboard().getFormulaByName(s).
+    FormulaDataStore.getFormulaByName(s).
       getOrElse{
       println(s"There is no formula named '$s'.")
       null
@@ -255,7 +270,7 @@ object Utility {
 
   def agentStatus() : Unit = {
     println("Agents: ")
-    for((a,b) <- Blackboard().getAgents()) {
+    for((a,b) <- Blackboard().getAgents) {
       println(a.name + " , "+ (if(a.isActive) "active" else "inactive") + " , "+ b +" budget , "+a.openTasks+" tasks")
     }
   }
@@ -263,12 +278,40 @@ object Utility {
   def printDerivation(f : FormulaStore) : Unit = Out.output(derivationString(new HashSet[Int](), 0, f, new StringBuilder()).toString())
 
   private def derivationString(origin: Set[Int], indent : Int, f: FormulaStore, sb : StringBuilder) : StringBuilder = {
-    f.origin.foldRight(sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\t"*6+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
+    f.annotation match {
+      case FromFile(_, _) => sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\n")
+      case InferredFrom(_, fs) => fs.foldRight(sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
+      case _ => sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\n")
+    }
+//    f.origin.foldRight(sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\t"*6+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
+  }
+
+  def printProof(f : FormulaStore) : Unit = {
+
+    var sf : Set[FormulaStore] = new HashSet[FormulaStore]
+    var proof : Seq[String] = Seq()
+
+    def derivationProof(f: FormulaStore)
+    {
+      if (!sf.contains(f)) {
+        sf = sf + f
+        f.annotation match {
+          case InferredFrom(_, fs) =>
+            fs.foreach(derivationProof(_))
+            proof = mkTPTP(f) +: proof
+          case _ =>
+            proof = mkTPTP(f) +: proof
+        }
+      }
+    }
+
+    derivationProof(f)
+    Out.output(proof.reverse.mkString("\n"))
   }
 
   private def mkTPTP(f : FormulaStore) : String = {
     try{
-      ToTPTP(f).output
+      ToTPTP.withAnnotation(f).output
     } catch {
       case e : Throwable => f.pretty
     }
@@ -295,12 +338,10 @@ object Utility {
 
 class SZSException(val status : StatusSZS, message : String = "", val debugMessage: String = "", cause : Throwable = null) extends RuntimeException(message, cause)
 
-case class SZSOutput(status : StatusSZS, problem: String = "") extends Output {
-  override def output: String = problem match {
-    case "" => s"% SZS status ${status.output}"
-    case prob => s"% SZS status ${status.output} for $problem"
+case class SZSOutput(status : StatusSZS, problem: String, furtherInfo: String = "") extends Output {
+  override def output: String = if (furtherInfo == "") {
+    s"% SZS status ${status.output} for $problem"
+  } else {
+    s"% SZS status ${status.output} for $problem : $furtherInfo"
   }
 }
-
-
-
